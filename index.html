@@ -1114,19 +1114,43 @@ async function loadData(){
 }
 
 /* ============================================================
-   Enrichissement
+   Enrichissement — CORRIGÉ pour gérer genre M/H et F
    ============================================================ */
 function prepareData(raw){
   const { communes, intercos, maires, mandats } = raw;
 
+  // === Map des maires avec plusieurs clés normalisées ===
   const mairesMap = {};
   maires.forEach(m => {
     const nom = pickField(m, "nom");
     const prenom = pickField(m, "prenom", "prénom");
-    const keys = [`${prenom} ${nom}`, `${nom} ${prenom}`, nom, prenom]
-      .filter(Boolean).map(s => s.trim());
-    keys.forEach(k => mairesMap[k] = m);
+    const keys = [
+      `${prenom} ${nom}`,
+      `${nom} ${prenom}`,
+      nom,
+      prenom,
+    ].filter(Boolean);
+
+    keys.forEach(k => {
+      const norm = normalize(k);
+      mairesMap[norm] = m;
+      mairesMap[norm.replace(/\s+/g, '')] = m;
+    });
   });
+
+  // === Recherche floue ===
+  function findMaire(nomMaire){
+    if (!nomMaire) return null;
+    const norm = normalize(nomMaire);
+    if (mairesMap[norm]) return mairesMap[norm];
+    const compact = norm.replace(/\s+/g, '');
+    if (mairesMap[compact]) return mairesMap[compact];
+    // Recherche partielle
+    for (const [k, v] of Object.entries(mairesMap)){
+      if (k.includes(norm) || norm.includes(k)) return v;
+    }
+    return null;
+  }
 
   const communesMap = {};
   communes.forEach(c => {
@@ -1141,6 +1165,7 @@ function prepareData(raw){
     intercosMap[court] = nom;
   });
 
+  // === Enrichissement ===
   state.all = mandats.map(m => {
     const nomMaire = pickField(m, "nom_maire", "nomMaire", "maire");
     const codeInsee = pickField(m, "code_insee", "codeInsee", "code");
@@ -1148,10 +1173,20 @@ function prepareData(raw){
     const dateDebut = pickField(m, "date_debut", "dateDebut", "debut");
     const dateFin = pickField(m, "date_fin", "dateFin", "fin");
 
-    const infoMaire = mairesMap[nomMaire] || {};
+    const infoMaire = findMaire(nomMaire) || {};
     const infoCommune = communesMap[codeInsee] || {};
     const intercoCourt = pickField(infoCommune, "interco", "intercommunalite");
-    const genre = pickField(infoMaire, "genre", "sexe") || "?";
+
+    // === CORRECTION GENRE : M/H → Homme, F → Femme ===
+    const rawGenre = (pickField(infoMaire, "genre", "sexe") || "").toString().trim().toUpperCase();
+    let genre = "?";
+    if (rawGenre === "M" || rawGenre === "H" || rawGenre === "HOMME" ||
+        rawGenre === "MASCULIN" || rawGenre === "MALE") {
+      genre = "H";
+    } else if (rawGenre === "F" || rawGenre === "FEMME" ||
+               rawGenre === "FEMININ" || rawGenre === "FEMALE") {
+      genre = "F";
+    }
 
     const anneeDebut = parseInt((dateDebut || "").substring(0,4)) || null;
     const anneeFin = dateFin ? parseInt(dateFin.substring(0,4)) : new Date().getFullYear();
@@ -1171,8 +1206,14 @@ function prepareData(raw){
     };
   });
 
+  // === Diagnostic console ===
+  const stats = { H: 0, F: 0, "?": 0 };
+  state.all.forEach(d => stats[d.genre]++);
   console.log("📊 Mandats enrichis :", state.all.length);
+  console.log("👥 Répartition genre :", stats);
   console.log("🔍 Exemple :", state.all[0]);
+  console.log("📋 Colonnes maires.csv :", maires.length ? Object.keys(maires[0]) : "vide");
+  console.log("📋 Colonnes mandats.csv :", mandats.length ? Object.keys(mandats[0]) : "vide");
 }
 
 /* ============================================================
@@ -1262,6 +1303,7 @@ function renderKPIs(){
   const maires = new Set(data.map(d => d.nom_maire)).size;
   const communes = new Set(data.map(d => d.nom_commune)).size;
   const femmes = data.filter(d => d.genre === 'F').length;
+  const hommes = data.filter(d => d.genre === 'H').length;
   const pctFemmes = total ? ((femmes/total)*100).toFixed(1) : 0;
   const durees = data.map(d => d.duree).filter(d => d && d > 0);
   const moy = durees.length ? (durees.reduce((a,b)=>a+b,0)/durees.length).toFixed(1) : '—';
@@ -1294,7 +1336,7 @@ function renderKPIs(){
   document.getElementById('ivMairesUniques').textContent = maires;
   document.getElementById('ivCommunesUniques').textContent = communes;
   document.getElementById('ivFemmes').textContent = femmes;
-  document.getElementById('ivHommes').textContent = total - femmes;
+  document.getElementById('ivHommes').textContent = hommes;
   document.getElementById('ivEncours').textContent = data.filter(d=>d.enCours).length;
   document.getElementById('ivDureeMoy').textContent = moy + ' ans';
 
@@ -1423,13 +1465,16 @@ function showMaireModal(nomMaire){
   const dernier = mandats[mandats.length-1];
   const totalAns = mandats.reduce((s,m) => s + (m.duree||0), 0);
   const communes = [...new Set(mandats.map(m=>m.nom_commune))];
+  const genreLabel = premier.genre === 'F' ? '👩 Femme'
+                  : premier.genre === 'H' ? '👨 Homme'
+                  : '❓ Inconnu';
 
   const html = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="intel-panel">
         <div class="intel-head"><span>👤 IDENTITÉ</span></div>
         <div class="intel-body">
-          <div class="intel-row"><span class="k">Genre</span><span class="v ${premier.genre==='F'?'red':'cyan'}">${premier.genre==='F'?'👩 Femme':'👨 Homme'}</span></div>
+          <div class="intel-row"><span class="k">Genre</span><span class="v ${premier.genre==='F'?'red':'cyan'}">${genreLabel}</span></div>
           <div class="intel-row"><span class="k">Mandats</span><span class="v cyan">${mandats.length}</span></div>
           <div class="intel-row"><span class="k">Communes</span><span class="v">${communes.length}</span></div>
           <div class="intel-row"><span class="k">Durée totale</span><span class="v amber">${totalAns} ans</span></div>
@@ -1470,7 +1515,7 @@ function showMaireModal(nomMaire){
 }
 
 /* ============================================================
-   Carte — TUILES OSM GRATUITES SANS CLÉ API
+   Carte — tuiles OSM gratuites
    ============================================================ */
 function renderMapView(){
   const area = document.getElementById('resultsArea');
@@ -1486,7 +1531,6 @@ function renderMapView(){
 
     state.map = L.map('map', { zoomControl: true }).setView([-21.115, 55.536], 9);
 
-    // ==== Tuiles OpenStreetMap officielles — 100% GRATUITES, AUCUNE CLÉ API ====
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
       maxZoom: 19,
@@ -1516,15 +1560,12 @@ function renderMapView(){
       );
     });
 
-    // Force le recalcul de la taille après affichage
     setTimeout(() => state.map.invalidateSize(), 100);
   }, 100);
 }
 
 /* ============================================================
-   Vue Graphiques — HEATMAP CORRIGÉE
-   La heatmap utilise maintenant un rendu "matrix" custom
-   avec des rectangles dessinés via un plugin Chart.js léger
+   Vue Graphiques — Heatmap custom HTML/CSS
    ============================================================ */
 function renderChartsView(){
   const area = document.getElementById('resultsArea');
@@ -1564,7 +1605,7 @@ function renderChartsView(){
   setTimeout(() => {
     const data = state.filtered;
 
-    /* -------- 1. Décennie -------- */
+    /* 1. Décennie */
     destroyChart('decennie');
     const dec = {};
     data.forEach(d => { if (d.anneeDebut) { const k = Math.floor(d.anneeDebut/10)*10; dec[k]=(dec[k]||0)+1; } });
@@ -1582,9 +1623,9 @@ function renderChartsView(){
                 x:{ticks:{color:'#3a3a3a'},grid:{display:false}}}}
     });
 
-    /* -------- 2. Genre -------- */
+    /* 2. Genre */
     destroyChart('genre');
-    const h = data.filter(d=>d.genre!=='F').length;
+    const h = data.filter(d=>d.genre==='H').length;
     const f = data.filter(d=>d.genre==='F').length;
     state.chartInstances.genre = new Chart(document.getElementById('chartGenre'), {
       type:'doughnut',
@@ -1596,7 +1637,7 @@ function renderChartsView(){
         plugins:{legend:{labels:{color:'#3a3a3a'}}}}
     });
 
-    /* -------- 3. Timeline -------- */
+    /* 3. Timeline */
     destroyChart('timeline');
     const p = {};
     data.forEach(d => { if (d.anneeDebut) p[d.anneeDebut]=(p[d.anneeDebut]||0)+1; });
@@ -1614,7 +1655,7 @@ function renderChartsView(){
                 x:{ticks:{color:'#3a3a3a',maxTicksLimit:20},grid:{display:false}}}}
     });
 
-    /* -------- 4. Intercos -------- */
+    /* 4. Intercos */
     destroyChart('intercos');
     const ic = {};
     data.forEach(d => { const k = d.intercoNom || 'N/A'; ic[k]=(ic[k]||0)+1; });
@@ -1631,7 +1672,7 @@ function renderChartsView(){
                 y:{ticks:{color:'#3a3a3a',font:{size:10}},grid:{display:false}}}}
     });
 
-    /* -------- 5. Durées -------- */
+    /* 5. Durées */
     destroyChart('durees');
     const bins = {'0-3':0,'4-6':0,'7-9':0,'10-12':0,'13-15':0,'16+':0};
     data.forEach(d => {
@@ -1657,7 +1698,7 @@ function renderChartsView(){
                 x:{ticks:{color:'#3a3a3a'},grid:{display:false}}}}
     });
 
-    /* -------- 6. Top communes -------- */
+    /* 6. Top communes */
     destroyChart('communes');
     const pc = {};
     data.forEach(d => pc[d.nom_commune]=(pc[d.nom_commune]||0)+1);
@@ -1675,13 +1716,13 @@ function renderChartsView(){
                 y:{ticks:{color:'#3a3a3a'},grid:{display:false}}}}
     });
 
-    /* -------- 7. HEATMAP CUSTOM (HTML/CSS pur) -------- */
+    /* 7. Heatmap custom */
     renderCustomHeatmap(data);
   }, 60);
 }
 
 /* ============================================================
-   Heatmap custom en HTML/CSS — Fiable, pas de bug Chart.js
+   Heatmap custom HTML/CSS
    ============================================================ */
 function renderCustomHeatmap(data){
   const container = document.getElementById('heatmapCustom');
@@ -1696,7 +1737,6 @@ function renderCustomHeatmap(data){
     return;
   }
 
-  // Matrice de comptage
   const matrix = {};
   let maxVal = 0;
   communes.forEach(c => {
@@ -1712,11 +1752,9 @@ function renderCustomHeatmap(data){
     }
   });
 
-  // Couleur : dégradé bleu → orange → rouge
   function cellColor(v){
     if (v === 0) return '#f6f6f6';
     const r = v / maxVal;
-    // Interpolation bleu (#cce4ff) → bleu vif (#0066cc) → orange (#d94d1e)
     if (r < 0.5){
       const t = r * 2;
       const c1 = [204, 228, 255];
@@ -1736,7 +1774,6 @@ function renderCustomHeatmap(data){
     return (v / maxVal) > 0.4 ? '#ffffff' : '#1e1e1e';
   }
 
-  // Construction de la grille
   let html = `
     <div style="display:inline-block;min-width:100%">
       <table style="border-collapse:separate;border-spacing:2px;font-family:var(--font-mono);font-size:10px">
@@ -1779,9 +1816,7 @@ function renderCustomHeatmap(data){
                              padding:6px 4px;
                              border-radius:3px;
                              font-weight:${v>0?'700':'400'};
-                             min-width:44px;
-                             transition:transform 0.1s;
-                             cursor:${v>0?'help':'default'}">
+                             min-width:44px;">
                     ${v > 0 ? v : ''}
                   </td>
                 `;
@@ -1793,7 +1828,6 @@ function renderCustomHeatmap(data){
     </div>
   `;
 
-  // Légende
   html += `
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;
                 margin-top:16px;padding:12px;background:var(--grey-50);
@@ -1821,7 +1855,7 @@ function renderCustomHeatmap(data){
 }
 
 /* ============================================================
-   Vue Maires
+   Vue Maires (agrégat)
    ============================================================ */
 function renderMairesView(){
   const area = document.getElementById('resultsArea');
