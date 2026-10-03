@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>🇷🇪 Mandats des Maires — La Réunion 974</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --blue-france:#000091;
+  --blue-france-hi:#1212ff;
+  --blue-france-soft:#e3e3fd;
+  --blue-eu:#003399;
+  --blue-eu-hi:#0055ff;
+  --blue-eu-soft:#e6ecff;
+  --gold-eu:#ffcc00;
+  --red-marianne:#E1000F;
+  --red-marianne-soft:#ffe9e9;
+  --white:#ffffff;
+  --grey-50:#f6f6f6;
+  --grey-100:#eeeeee;
+  --grey-200:#e5e5e5;
+  --grey-500:#929292;
+  --grey-700:#3a3a3a;
+  --grey-900:#1e1e1e;
+  --green-bourgeon:#18753c;
+  --green-emeraude:#00a95f;
+  --green-soft:#e6f7ee;
+  --yellow-tournesol:#ffb800;
+  --amber-soft:#fff4d6;
+  --reunion-blue:#0066cc;
+  --reunion-volcano:#d94d1e;
+  --font-mono:'SF Mono',Menlo,Consolas,'Courier New',monospace;
+  --font-sans:'Marianne','system-ui',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+
+html{height:100%}
+body{
+  font-family:var(--font-sans);
+  background:var(--grey-50);
+  color:var(--grey-900);
+  font-size:13px;line-height:1.5;
+  min-height:100%;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--grey-100)}
+::-webkit-scrollbar-thumb{background:var(--grey-500);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--reunion-blue)}
+
+.reunion-band{
+  height:6px;
+  background:linear-gradient(to right,
+    var(--blue-france) 0%, var(--blue-france) 25%,
+    var(--white) 25%, var(--white) 50%,
+    var(--red-marianne) 50%, var(--red-marianne) 75%,
+    var(--gold-eu) 75%, var(--gold-eu) 100%);
+}
+
+.bloc-marque{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;background:var(--white);
+  border-bottom:1px solid var(--grey-200);
+}
+.bloc-marque-logo{
+  font-weight:700;font-size:13px;line-height:1.15;
+  color:var(--reunion-blue);letter-spacing:0.3px;
+  text-transform:uppercase;
+  border-right:1px solid var(--grey-200);
+  padding-right:12px;
+}
+.bloc-marque-devise{
+  font-size:10px;font-weight:400;color:var(--grey-700);
+  line-height:1.3;letter-spacing:0.5px;
+}
+.bloc-marque-devise em{
+  display:block;font-style:normal;
+  text-transform:uppercase;letter-spacing:1.2px;
+  font-size:9px;color:var(--grey-500);
+}
+
+.topbar{
+  background:var(--white);
+  border-bottom:1px solid var(--grey-200);
+  display:flex;align-items:center;
+  padding:10px 16px;gap:12px;
+  position:sticky;top:6px;z-index:100;
+  flex-wrap:wrap;
+  box-shadow:0 2px 6px rgba(0,0,0,0.04);
+}
+.brand{
+  font-size:14px;font-weight:700;
+  color:var(--reunion-blue);letter-spacing:0.3px;
+  display:flex;align-items:center;gap:8px;
+  white-space:nowrap;
+}
+.brand .dot{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--green-emeraude);
+  box-shadow:0 0 0 3px rgba(0,169,95,0.2);
+  animation:pulse 1.8s infinite;flex-shrink:0;
+}
+@keyframes pulse{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:0.5;transform:scale(0.85)}
+}
+.brand .sub{
+  color:var(--grey-500);font-weight:400;
+  font-size:12px;font-family:var(--font-mono);
+}
+
+.tabs{
+  display:flex;gap:4px;order:3;width:100%;
+  overflow-x:auto;padding-bottom:2px;scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  background:transparent;border:none;
+  color:var(--grey-700);font-size:12px;font-weight:500;
+  padding:8px 14px;border-radius:4px;cursor:pointer;
+  transition:all 0.15s;display:flex;align-items:center;gap:6px;
+  white-space:nowrap;flex-shrink:0;
+  border-bottom:2px solid transparent;
+}
+.tab:hover{background:var(--blue-eu-soft);color:var(--reunion-blue)}
+.tab.active{
+  background:var(--blue-eu-soft);
+  color:var(--reunion-blue);
+  border-bottom-color:var(--reunion-blue);
+  font-weight:700;
+}
+.tab .count{
+  font-family:var(--font-mono);font-size:10px;
+  background:var(--grey-100);padding:1px 6px;border-radius:8px;
+  color:var(--grey-700);
+}
+.tab.active .count{
+  background:var(--reunion-blue);color:var(--white);
+}
+
+.topbar-right{
+  margin-left:auto;display:flex;gap:14px;
+  font-family:var(--font-mono);font-size:11px;
+  align-items:center;flex-wrap:wrap;order:2;
+}
+.topbar-stat{
+  display:flex;gap:5px;color:var(--grey-700);
+  align-items:center;white-space:nowrap;
+}
+.topbar-stat .val{
+  color:var(--reunion-blue);font-weight:700;
+  padding:2px 6px;border-radius:3px;background:var(--blue-eu-soft);
+}
+.topbar-stat .val.green{color:var(--green-bourgeon);background:var(--green-soft)}
+.topbar-stat .val.amber{color:#8a5e00;background:var(--amber-soft)}
+.topbar-stat .val.red{color:var(--red-marianne);background:var(--red-marianne-soft)}
+
+.app{
+  display:grid;
+  grid-template-columns:280px 1fr 320px;
+  height:calc(100vh - 130px);
+  overflow:hidden;gap:0;
+}
+@media(max-width:1200px){.app{grid-template-columns:240px 1fr 280px}}
+
+.sidebar{
+  background:var(--white);
+  border-right:1px solid var(--grey-200);
+  display:flex;flex-direction:column;
+  overflow:hidden;min-height:0;
+}
+.sb-head{
+  padding:14px 16px;
+  border-bottom:1px solid var(--grey-200);
+  background:var(--grey-50);flex-shrink:0;
+}
+.sb-title{
+  font-size:12px;font-weight:700;
+  color:var(--reunion-blue);
+  letter-spacing:0.5px;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;
+}
+.sb-title::before{
+  content:'';width:4px;height:14px;
+  background:var(--reunion-volcano);
+}
+.sb-count{
+  font-family:var(--font-mono);font-size:11px;
+  color:var(--grey-500);margin-top:6px;
+}
+.sb-actions{
+  display:flex;gap:4px;padding:8px 14px;
+  border-bottom:1px solid var(--grey-200);
+  background:var(--grey-50);flex-shrink:0;
+}
+.sb-actions button{
+  flex:1;background:var(--white);
+  border:1px solid var(--grey-200);
+  color:var(--grey-700);
+  font-size:10px;font-weight:600;
+  padding:5px 6px;border-radius:3px;
+  cursor:pointer;transition:all 0.15s;
+  font-family:var(--font-sans);
+}
+.sb-actions button:hover{
+  border-color:var(--reunion-blue);
+  color:var(--reunion-blue);
+  background:var(--blue-eu-soft);
+}
+.sb-search{
+  padding:10px 14px;
+  border-bottom:1px solid var(--grey-200);
+  flex-shrink:0;
+}
+.sb-search input{
+  width:100%;background:var(--white);
+  border:1px solid var(--grey-200);
+  border-radius:4px;color:var(--grey-900);
+  padding:9px 12px;font-size:13px;
+  font-family:var(--font-sans);
+}
+.sb-search input:focus{
+  outline:none;border-color:var(--reunion-blue);
+  box-shadow:0 0 0 2px var(--blue-eu-soft);
+}
+.sb-list{
+  flex:1;overflow-y:auto;padding:8px;
+  min-height:0;
+}
+
+.portal-item{
+  background:var(--white);
+  border:1px solid var(--grey-200);
+  border-left:4px solid var(--grey-500);
+  border-radius:4px;
+  padding:8px 10px;margin-bottom:5px;
+  cursor:pointer;transition:all 0.15s;
+  display:flex;align-items:center;gap:8px;
+}
+.portal-item:hover{
+  border-color:var(--reunion-blue);
+  background:var(--blue-eu-soft);
+  transform:translateX(2px);
+}
+.portal-item.active{
+  background:var(--blue-eu-soft);
+  border-color:var(--reunion-blue);
+  border-left-color:var(--reunion-blue);
+  box-shadow:0 0 0 2px var(--blue-eu-soft);
+}
+.portal-item.active .portal-check{
+  background:var(--reunion-blue);
+  border-color:var(--reunion-blue);
+  color:var(--white);
+}
+.portal-check{
+  width:16px;height:16px;
+  border:2px solid var(--grey-500);
+  border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:11px;font-weight:700;
+  color:transparent;transition:all 0.15s;
+}
+.portal-flag{font-size:18px;flex-shrink:0}
+.portal-info{flex:1;min-width:0}
+.portal-name{
+  font-size:12px;font-weight:700;
+  color:var(--grey-900);line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.portal-type{
+  font-family:var(--font-mono);font-size:9px;
+  color:var(--grey-500);text-transform:uppercase;
+  margin-top:2px;letter-spacing:0.5px;
+}
+.portal-count{
+  font-family:var(--font-mono);font-size:10px;font-weight:700;
+  background:var(--grey-100);color:var(--grey-700);
+  padding:2px 6px;border-radius:8px;flex-shrink:0;
+}
+.portal-item.active .portal-count{
+  background:var(--reunion-blue);color:var(--white);
+}
+
+.center{
+  background:var(--grey-50);
+  display:flex;flex-direction:column;
+  overflow:hidden;min-height:0;
+}
+
+.kpi-strip{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
+  gap:1px;
+  background:var(--grey-200);
+  border-bottom:1px solid var(--grey-200);
+  flex-shrink:0;
+}
+.kpi-cell{
+  background:var(--white);
+  padding:12px 14px;
+  display:flex;flex-direction:column;
+  gap:2px;
+  transition:background 0.15s;
+}
+.kpi-cell:hover{background:var(--blue-eu-soft)}
+.kpi-cell .kpi-label{
+  font-size:10px;font-weight:600;
+  color:var(--grey-500);
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+.kpi-cell .kpi-value{
+  font-family:var(--font-mono);
+  font-size:20px;font-weight:700;
+  color:var(--reunion-blue);
+  line-height:1.1;
+}
+.kpi-cell .kpi-value.green{color:var(--green-bourgeon)}
+.kpi-cell .kpi-value.amber{color:#8a5e00}
+.kpi-cell .kpi-value.red{color:var(--red-marianne)}
+.kpi-cell .kpi-sub{
+  font-size:10px;color:var(--grey-500);
+  font-family:var(--font-mono);
+}
+
+.search-bar{
+  padding:12px 14px;
+  background:var(--white);
+  border-bottom:1px solid var(--grey-200);
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+  flex-shrink:0;
+}
+.search-bar input[type=text]{
+  flex:1;min-width:180px;
+  background:var(--white);
+  border:1px solid var(--grey-200);
+  border-radius:4px;color:var(--grey-900);
+  padding:10px 14px;font-size:13px;
+  font-family:var(--font-sans);
+}
+.search-bar input[type=text]:focus{
+  outline:none;border-color:var(--reunion-blue);
+  box-shadow:0 0 0 2px var(--blue-eu-soft);
+}
+.search-bar select{
+  background:var(--white);
+  border:1px solid var(--grey-200);
+  border-radius:4px;color:var(--grey-900);
+  padding:10px 12px;font-size:12px;
+  font-family:var(--font-sans);
+}
+.search-bar select:focus{
+  outline:none;border-color:var(--reunion-blue);
+}
+.search-btn{
+  background:var(--reunion-blue);color:var(--white);
+  border:1px solid var(--reunion-blue);
+  font-size:12px;font-weight:700;
+  padding:10px 18px;border-radius:4px;
+  cursor:pointer;letter-spacing:0.3px;
+  transition:all 0.15s;white-space:nowrap;
+}
+.search-btn:hover{
+  background:var(--blue-eu-hi);
+  border-color:var(--blue-eu-hi);
+}
+
+.mode-tabs{
+  display:flex;gap:0;padding:0 10px;
+  border-bottom:1px solid var(--grey-200);
+  background:var(--white);flex-shrink:0;
+  overflow-x:auto;scrollbar-width:none;
+}
+.mode-tabs::-webkit-scrollbar{display:none}
+.mode-tab{
+  background:transparent;border:none;
+  color:var(--grey-700);font-size:12px;font-weight:500;
+  padding:10px 14px;cursor:pointer;
+  letter-spacing:0.2px;transition:all 0.15s;
+  white-space:nowrap;
+  border-bottom:3px solid transparent;
+}
+.mode-tab:hover{background:var(--grey-50);color:var(--reunion-blue)}
+.mode-tab.active{
+  color:var(--reunion-blue);
+  border-bottom-color:var(--reunion-blue);
+  font-weight:700;
+}
+
+.results{
+  flex:1;overflow-y:auto;padding:14px;
+  min-height:0;
+}
+
+.result-card{
+  background:var(--white);
+  border:1px solid var(--grey-200);
+  border-left:4px solid var(--reunion-blue);
+  border-radius:4px;
+  padding:12px 14px;margin-bottom:8px;
+  transition:all 0.15s;
+  position:relative;
+  cursor:pointer;
+}
+.result-card:hover{
+  border-color:var(--reunion-blue);
+  box-shadow:0 4px 12px rgba(0,102,204,0.08);
+  transform:translateX(2px);
+}
+.rc-head{
+  display:flex;align-items:flex-start;gap:10px;
+  margin-bottom:6px;
+}
+.rc-title{
+  font-size:14px;font-weight:700;
+  color:var(--grey-900);flex:1;line-height:1.35;
+}
+.rc-badges{
+  display:flex;gap:4px;flex-wrap:wrap;
+  justify-content:flex-end;flex-shrink:0;
+}
+.rc-badge{
+  font-family:var(--font-mono);font-size:9px;font-weight:700;
+  padding:3px 7px;border-radius:3px;
+  text-transform:uppercase;white-space:nowrap;
+  letter-spacing:0.5px;
+}
+.rc-badge.portal{background:var(--reunion-blue);color:var(--white)}
+.rc-badge.src{background:var(--grey-100);color:var(--grey-700);border:1px solid var(--grey-200)}
+.rc-badge.femme{background:var(--red-marianne);color:var(--white)}
+.rc-badge.homme{background:var(--blue-france);color:var(--white)}
+.rc-badge.encours{background:var(--green-emeraude);color:var(--white)}
+
+.rc-meta{
+  display:flex;gap:6px;
+  font-family:var(--font-mono);font-size:10px;
+  color:var(--grey-500);flex-wrap:wrap;margin-top:8px;
+}
+.rc-meta .tag{
+  background:var(--grey-50);
+  padding:3px 8px;border-radius:3px;
+  border:1px solid var(--grey-200);
+  color:var(--grey-700);
+}
+.rc-org{
+  color:var(--grey-700);font-weight:600;
+  font-size:12px;margin-bottom:6px;
+  display:flex;align-items:center;gap:6px;
+}
+
+.empty,.loading{
+  text-align:center;padding:60px 20px;
+  color:var(--grey-500);font-size:14px;
+}
+.spin{
+  width:40px;height:40px;
+  border:3px solid var(--grey-200);
+  border-top-color:var(--reunion-blue);
+  border-radius:50%;
+  animation:sp 0.8s linear infinite;
+  margin:0 auto 14px;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.error-box{
+  background:var(--red-marianne-soft);
+  border:1px solid var(--red-marianne);
+  border-left-width:4px;
+  color:var(--red-marianne);
+  padding:16px;border-radius:4px;
+  font-size:13px;margin:12px;
+}
+
+.chart-card{
+  background:var(--white);
+  border:1px solid var(--grey-200);
+  border-radius:4px;
+  padding:14px;margin-bottom:12px;
+}
+.chart-card h3{
+  font-size:13px;font-weight:700;
+  color:var(--reunion-blue);
+  margin-bottom:12px;
+  padding-bottom:8px;
+  border-bottom:1px solid var(--grey-200);
+  display:flex;align-items:center;gap:8px;
+}
+.chart-card h3::before{
+  content:'';width:4px;height:14px;
+  background:var(--reunion-volcano);
+}
+.chart-container{position:relative;height:280px}
+.chart-container.tall{height:420px}
+.charts-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(380px, 1fr));
+  gap:12px;
+}
+.charts-grid .full{grid-column:1/-1}
+
+.right{
+  background:var(--white);
+  border-left:1px solid var(--grey-200);
+  display:flex;flex-direction:column;
+  overflow:hidden;min-height:0;
+}
+.rs-head{
+  padding:14px 16px;
+  border-bottom:1px solid var(--grey-200);
+  background:var(--grey-50);
+  font-size:12px;font-weight:700;
+  color:var(--reunion-blue);
+  letter-spacing:0.5px;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;
+  flex-shrink:0;
+}
+.rs-head::before{
+  content:'';width:4px;height:14px;
+  background:var(--reunion-volcano);
+}
+.rs-body{
+  flex:1;overflow-y:auto;padding:12px;
+  min-height:0;
+}
+
+.intel-panel{
+  background:var(--white);
+  border:1px solid var(--grey-200);
+  border-radius:4px;margin-bottom:10px;
+  overflow:hidden;
+}
+.intel-head{
+  padding:9px 12px;
+  background:var(--grey-50);
+  border-bottom:1px solid var(--grey-200);
+  font-size:11px;font-weight:700;
+  color:var(--reunion-blue);
+  letter-spacing:0.5px;text-transform:uppercase;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.intel-body{padding:10px}
+.intel-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:7px 0;border-bottom:1px solid var(--grey-100);
+  font-size:12px;
+}
+.intel-row:last-child{border-bottom:none}
+.intel-row .k{color:var(--grey-700)}
+.intel-row .v{
+  color:var(--grey-900);font-weight:700;text-align:right;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  max-width:170px;font-family:var(--font-mono);font-size:11px;
+}
+.intel-row .v.cyan{color:var(--reunion-blue)}
+.intel-row .v.green{color:var(--green-bourgeon)}
+.intel-row .v.amber{color:#8a5e00}
+.intel-row .v.red{color:var(--red-marianne)}
+
+#map{
+  height:420px;border-radius:4px;
+  background:#e5e5e5;
+}
+
+.pagination-bar{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  padding:10px 14px;
+  background:var(--white);
+  border-top:1px solid var(--grey-200);
+  border-bottom:1px solid var(--grey-200);
+  flex-shrink:0;
+}
+.pagination-info{
+  font-family:var(--font-mono);font-size:11px;
+  color:var(--grey-700);font-weight:600;
+}
+.pagination-info strong{color:var(--reunion-blue);font-size:13px}
+.pagination-spacer{flex:1}
+.page-btn{
+  background:var(--white);
+  color:var(--grey-900);
+  border:1px solid var(--grey-200);
+  font-size:12px;font-weight:600;
+  padding:6px 12px;border-radius:4px;
+  cursor:pointer;transition:all 0.15s;
+  min-width:36px;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+}
+.page-btn:hover:not(:disabled){
+  border-color:var(--reunion-blue);
+  color:var(--reunion-blue);
+  background:var(--blue-eu-soft);
+}
+.page-btn:disabled{opacity:0.4;cursor:not-allowed}
+.page-input{
+  width:60px;text-align:center;
+  padding:6px 8px;font-size:12px;
+  font-family:var(--font-mono);font-weight:700;
+  border:1px solid var(--grey-200);
+  border-radius:4px;
+  background:var(--white);
+  color:var(--reunion-blue);
+}
+.page-input:focus{
+  outline:none;border-color:var(--reunion-blue);
+  box-shadow:0 0 0 2px var(--blue-eu-soft);
+}
+.page-select{
+  background:var(--white);
+  border:1px solid var(--grey-200);
+  border-radius:4px;
+  color:var(--grey-900);
+  padding:6px 8px;font-size:12px;
+  font-family:var(--font-sans);
+}
+
+.export-group{
+  display:flex;gap:8px;
+  padding:12px 14px;
+  border-top:1px solid var(--grey-200);
+  background:var(--white);flex-shrink:0;
+  flex-wrap:wrap;
+}
+.export-btn{
+  flex:1;min-width:120px;
+  background:var(--white);
+  color:var(--grey-900);
+  border:1px solid var(--grey-200);
+  font-size:12px;font-weight:600;
+  padding:10px 14px;border-radius:4px;
+  cursor:pointer;transition:all 0.15s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.export-btn:hover{
+  border-color:var(--reunion-blue);
+  color:var(--reunion-blue);
+  background:var(--blue-eu-soft);
+}
+.export-btn:disabled{opacity:0.4;cursor:not-allowed}
+
+.diff-modal{
+  position:fixed;inset:0;z-index:2000;
+  display:none;align-items:center;justify-content:center;
+  padding:20px;
+}
+.diff-modal.show{display:flex}
+.diff-backdrop{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,0.5);
+  backdrop-filter:blur(4px);
+}
+.diff-content{
+  position:relative;
+  background:var(--white);
+  border-radius:6px;
+  max-width:900px;width:100%;
+  max-height:92vh;
+  display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.diff-header{
+  padding:16px 20px;
+  border-bottom:1px solid var(--grey-200);
+  display:flex;justify-content:space-between;align-items:center;
+  gap:12px;flex-wrap:wrap;
+  background:var(--grey-50);flex-shrink:0;
+}
+.diff-header h2{
+  font-size:15px;font-weight:700;
+  color:var(--reunion-blue);
+  display:flex;align-items:center;gap:10px;
+  flex:1;min-width:0;
+}
+.diff-close{
+  background:transparent;border:none;
+  color:var(--grey-500);cursor:pointer;
+  font-size:20px;padding:4px 8px;border-radius:4px;
+  transition:all 0.15s;
+}
+.diff-close:hover{background:var(--grey-100);color:var(--grey-900)}
+.diff-body{
+  flex:1;overflow-y:auto;padding:16px 20px;
+  min-height:0;
+}
+.diff-footer{
+  padding:12px 20px;
+  border-top:1px solid var(--grey-200);
+  background:var(--grey-50);
+  display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;
+  flex-shrink:0;
+}
+.diff-btn{
+  background:var(--white);
+  border:1px solid var(--grey-200);
+  color:var(--grey-700);
+  font-size:11px;font-weight:600;
+  padding:8px 14px;border-radius:4px;
+  cursor:pointer;transition:all 0.15s;
+  display:inline-flex;align-items:center;gap:5px;
+}
+.diff-btn:hover{
+  border-color:var(--reunion-blue);
+  color:var(--reunion-blue);
+  background:var(--blue-eu-soft);
+}
+.diff-btn.primary{
+  background:var(--reunion-blue);color:var(--white);
+  border-color:var(--reunion-blue);
+}
+.diff-btn.primary:hover{background:var(--blue-eu-hi)}
+
+.timeline-item{
+  display:flex;gap:12px;
+  padding:10px 0;
+  border-bottom:1px solid var(--grey-100);
+}
+.timeline-item:last-child{border-bottom:none}
+.timeline-dot{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--reunion-blue);
+  flex-shrink:0;margin-top:5px;
+  box-shadow:0 0 0 3px var(--blue-eu-soft);
+}
+.timeline-content{flex:1}
+.timeline-date{
+  font-family:var(--font-mono);font-size:11px;
+  color:var(--grey-500);font-weight:600;
+}
+.timeline-title{
+  font-size:12px;color:var(--grey-900);
+  font-weight:600;margin-top:2px;
+}
+.timeline-sub{
+  font-size:11px;color:var(--grey-500);
+  margin-top:2px;
+}
+
+@media(max-width:900px){
+  .app{display:flex;flex-direction:column;height:auto;min-height:calc(100vh - 130px)}
+  .sidebar{order:1;width:100%;border-right:none;border-bottom:1px solid var(--grey-200)}
+  .sb-list{max-height:200px}
+  .center{order:2;width:100%}
+  .results{max-height:60vh}
+  .right{order:3;width:100%;border-left:none;border-top:1px solid var(--grey-200)}
+  .tabs{order:3;width:100%}
+}
+@media(max-width:600px){
+  .bloc-marque{flex-direction:column;align-items:flex-start;padding:10px 12px}
+  .bloc-marque-logo{border-right:none;border-bottom:1px solid var(--grey-200);padding:0 0 6px 0}
+  .brand{font-size:13px;width:100%;justify-content:center}
+  .topbar-right{width:100%;justify-content:center;gap:12px;padding:6px 0;
+    border-top:1px solid var(--grey-200)}
+  .search-bar{padding:12px}
+  .search-bar input[type=text]{font-size:13px}
+  .search-btn{padding:10px 14px;font-size:12px}
+  .result-card{padding:12px}
+  .rc-title{font-size:13px}
+  .charts-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="reunion-band"></div>
+
+<div class="bloc-marque">
+  <div class="bloc-marque-logo">La Réunion<br>974</div>
+  <div class="bloc-marque-devise">
+    <em>Mandats</em>
+    <em>Maires</em>
+    <em>1950 — aujourd'hui</em>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    MONITOR MAIRES 974
+    <span class="sub">/ data.gouv.fr</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="all">
+      📋 Tous <span class="count" id="countAll">0</span>
+    </button>
+    <button class="tab" data-tab="encours">
+      🟢 En cours <span class="count" id="countEncours">0</span>
+    </button>
+    <button class="tab" data-tab="femmes">
+      👩 Femmes <span class="count" id="countFemmes">0</span>
+    </button>
+    <button class="tab" data-tab="hommes">
+      👨 Hommes <span class="count" id="countHommes">0</span>
+    </button>
+    <button class="tab" data-tab="charts">
+      📊 Analyses
+    </button>
+  </div>
+
+  <div class="topbar-right">
+    <div class="topbar-stat"><span>STATUT</span><span class="val green" id="tbStatus">—</span></div>
+    <div class="topbar-stat"><span>MANDATS</span><span class="val" id="tbCount">—</span></div>
+    <div class="topbar-stat"><span>MAIRES</span><span class="val" id="tbMaires">—</span></div>
+    <div class="topbar-stat"><span>COMMUNES</span><span class="val" id="tbCommunes">—</span></div>
+  </div>
+</div>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sb-head">
+      <div class="sb-title">🏛️ Intercommunalités</div>
+      <div class="sb-count" id="sbCount">— EPCI · — actives</div>
+    </div>
+    <div class="sb-actions">
+      <button id="btnSelectAll">Tout</button>
+      <button id="btnSelectNone">Aucun</button>
+      <button id="btnSelectKey">Principales</button>
+    </div>
+    <div class="sb-search">
+      <input type="text" id="sourceSearch" placeholder="🔍 Filtrer les EPCI...">
+    </div>
+    <div class="sb-list" id="sbList"></div>
+  </aside>
+
+  <main class="center">
+
+    <div class="kpi-strip">
+      <div class="kpi-cell">
+        <span class="kpi-label">Total mandats</span>
+        <span class="kpi-value" id="kpiMandats">—</span>
+        <span class="kpi-sub" id="kpiMandatsSub">—</span>
+      </div>
+      <div class="kpi-cell">
+        <span class="kpi-label">Maires uniques</span>
+        <span class="kpi-value" id="kpiMaires">—</span>
+        <span class="kpi-sub" id="kpiMairesSub">—</span>
+      </div>
+      <div class="kpi-cell">
+        <span class="kpi-label">Communes</span>
+        <span class="kpi-value" id="kpiCommunes">—</span>
+        <span class="kpi-sub" id="kpiCommunesSub">—</span>
+      </div>
+      <div class="kpi-cell">
+        <span class="kpi-label">Femmes maires</span>
+        <span class="kpi-value red" id="kpiFemmes">—</span>
+        <span class="kpi-sub" id="kpiFemmesSub">—</span>
+      </div>
+      <div class="kpi-cell">
+        <span class="kpi-label">Durée moyenne</span>
+        <span class="kpi-value amber" id="kpiDuree">—</span>
+        <span class="kpi-sub" id="kpiDureeSub">—</span>
+      </div>
+      <div class="kpi-cell">
+        <span class="kpi-label">Période couverte</span>
+        <span class="kpi-value green" id="kpiPeriode">—</span>
+        <span class="kpi-sub" id="kpiPeriodeSub">—</span>
+      </div>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" id="queryInput" placeholder="🔍 Rechercher un maire, une commune, un mandat…"
+             autocomplete="off" value="">
+      <select id="filterCommune">
+        <option value="">Toutes les communes</option>
+      </select>
+      <select id="sortSelect">
+        <option value="recent">Plus récents</option>
+        <option value="ancien">Plus anciens</option>
+        <option value="maire">Nom du maire A→Z</option>
+        <option value="commune">Commune A→Z</option>
+      </select>
+      <button class="search-btn" id="searchBtn">🔍 FILTRER</button>
+    </div>
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-view="results">📋 Mandats</button>
+      <button class="mode-tab" data-view="carte">🗺️ Carte</button>
+      <button class="mode-tab" data-view="charts">📊 Graphiques</button>
+      <button class="mode-tab" data-view="maires">👤 Maires</button>
+      <button class="mode-tab" data-view="json">📄 JSON brut</button>
+    </div>
+
+    <div class="results" id="resultsArea">
+      <div class="loading">
+        <div class="spin"></div>
+        Chargement des fichiers CSV…
+      </div>
+    </div>
+
+    <div class="pagination-bar" id="paginationBar" hidden>
+      <span class="pagination-info" id="paginationInfo">—</span>
+      <span class="pagination-spacer"></span>
+      <button class="page-btn" id="pageFirst">⏮</button>
+      <button class="page-btn" id="pagePrev">←</button>
+      <input type="number" class="page-input" id="pageInput" min="1" value="1" />
+      <span style="font-size:12px;color:var(--grey-500)" id="pageTotal">/ —</span>
+      <button class="page-btn" id="pageNext">→</button>
+      <button class="page-btn" id="pageLast">⏭</button>
+      <select class="page-select" id="pageSizeSelect">
+        <option value="10">10 / page</option>
+        <option value="25" selected>25 / page</option>
+        <option value="50">50 / page</option>
+        <option value="100">100 / page</option>
+      </select>
+    </div>
+
+    <div class="export-group">
+      <button class="export-btn" id="exportJson" disabled>📥 Export JSON</button>
+      <button class="export-btn" id="exportCsv" disabled>📥 Export CSV</button>
+      <button class="export-btn" id="refreshBtn">⟳ Recharger</button>
+    </div>
+  </main>
+
+  <aside class="right">
+    <div class="rs-head">Intelligence</div>
+    <div class="rs-body">
+
+      <div class="intel-panel">
+        <div class="intel-head"><span>💚 ÉTAT DU MONITOR</span></div>
+        <div class="intel-body">
+          <div class="intel-row"><span class="k">Statut</span><span class="v green" id="ivStatus">—</span></div>
+          <div class="intel-row"><span class="k">Chargé à</span><span class="v cyan" id="ivLastRefresh">—</span></div>
+          <div class="intel-row"><span class="k">Source</span><span class="v cyan">maires.sys-dev-run.re</span></div>
+          <div class="intel-row"><span class="k">Licence</span><span class="v amber">CC-Zero</span></div>
+          <div class="intel-row"><span class="k">Uptime session</span><span class="v cyan" id="ivUptime">—</span></div>
+        </div>
+      </div>
+
+      <div class="intel-panel">
+        <div class="intel-head"><span>📊 STATISTIQUES FILTRÉES</span></div>
+        <div class="intel-body">
+          <div class="intel-row"><span class="k">Mandats</span><span class="v cyan" id="ivMandats">—</span></div>
+          <div class="intel-row"><span class="k">Maires uniques</span><span class="v cyan" id="ivMairesUniques">—</span></div>
+          <div class="intel-row"><span class="k">Communes</span><span class="v cyan" id="ivCommunesUniques">—</span></div>
+          <div class="intel-row"><span class="k">Femmes</span><span class="v red" id="ivFemmes">—</span></div>
+          <div class="intel-row"><span class="k">Hommes</span><span class="v cyan" id="ivHommes">—</span></div>
+          <div class="intel-row"><span class="k">Mandats en cours</span><span class="v green" id="ivEncours">—</span></div>
+          <div class="intel-row"><span class="k">Durée moyenne</span><span class="v amber" id="ivDureeMoy">—</span></div>
+        </div>
+      </div>
+
+      <div class="intel-panel">
+        <div class="intel-head"><span>🏆 TOP 5 COMMUNES</span></div>
+        <div class="intel-body" id="topCommunes">
+          <div style="text-align:center;color:var(--grey-500);font-size:11px;padding:8px">
+            Aucune donnée
+          </div>
+        </div>
+      </div>
+
+      <div class="intel-panel">
+        <div class="intel-head"><span>👤 TOP 5 MAIRES</span></div>
+        <div class="intel-body" id="topMaires">
+          <div style="text-align:center;color:var(--grey-500);font-size:11px;padding:8px">
+            Aucune donnée
+          </div>
+        </div>
+      </div>
+
+      <div class="intel-panel">
+        <div class="intel-head"><span>⚙️ CONFIGURATION</span></div>
+        <div class="intel-body">
+          <div class="intel-row"><span class="k">Fichiers</span><span class="v cyan">4 CSV locaux</span></div>
+          <div class="intel-row"><span class="k">Dossier</span><span class="v">data/</span></div>
+          <div class="intel-row"><span class="k">Encodage</span><span class="v green">UTF-8</span></div>
+          <div class="intel-row"><span class="k">Format</span><span class="v">CSV</span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<div class="diff-modal" id="diffModal">
+  <div class="diff-backdrop" data-diff-close></div>
+  <div class="diff-content">
+    <div class="diff-header">
+      <h2>
+        <span id="diffTitle">—</span>
+      </h2>
+      <button class="diff-close" data-diff-close>✕</button>
+    </div>
+    <div class="diff-body" id="diffBody"></div>
+    <div class="diff-footer">
+      <button class="diff-btn" data-diff-close>Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const LOCAL_FILES = {
+  communes: "data/communes.csv",
+  intercos: "data/intercommunalites.csv",
+  maires:   "data/maires.csv",
+  mandats:  "data/mandats.csv"
+};
+
+const COORDS_COMMUNES = {
+  "Saint-Denis":[-20.8823,55.4504],"Saint-Paul":[-21.0096,55.2707],
+  "Le Port":[-20.9373,55.2918],"Saint-Pierre":[-21.3393,55.4781],
+  "Le Tampon":[-21.2781,55.5153],"Saint-André":[-20.9634,55.6503],
+  "Saint-Louis":[-21.2860,55.4113],"Saint-Joseph":[-21.3787,55.6192],
+  "Saint-Benoît":[-21.0342,55.7128],"Sainte-Marie":[-20.8967,55.5492],
+  "Sainte-Suzanne":[-20.9061,55.6072],"Bras-Panon":[-21.0036,55.6789],
+  "La Possession":[-20.9276,55.3351],"Saint-Leu":[-21.1706,55.2883],
+  "Petite-Île":[-21.3533,55.5669],"Cilaos":[-21.1336,55.4714],
+  "Salazie":[-21.0275,55.5394],"Entre-Deux":[-21.2489,55.4694],
+  "Les Avirons":[-21.2414,55.3392],"L'Étang-Salé":[-21.2661,55.3653],
+  "Trois-Bassins":[-21.1058,55.3017],"Saint-Philippe":[-21.3581,55.7669],
+  "Sainte-Rose":[-21.1261,55.7925],"La Plaine-des-Palmistes":[-21.1350,55.6347]
+};
+
+const CHART_COLORS = {
+  blue:"#0066cc", green:"#00a95f", orange:"#d94d1e",
+  purple:"#7b5cff", pink:"#e1000f", cyan:"#56d4dd",
+  gold:"#ffb800", grey:"#929292"
+};
+
+const state = {
+  all: [],
+  filtered: [],
+  categories: new Set(),
+  currentTab: 'all',
+  currentView: 'results',
+  search: '',
+  commune: '',
+  sort: 'recent',
+  page: 1,
+  pageSize: 25,
+  totalFiltered: 0,
+  uptimeStart: Date.now(),
+  maires: [],
+  communes: [],
+  intercos: [],
+  chartInstances: {},
+  map: null,
+  mapLayers: {}
+};
+
+/* ============================================================
+   Utils
+   ============================================================ */
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function normalize(str){
+  if (!str) return '';
+  return str.toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ').trim();
+}
+function formatUptime(ms){
+  const s = Math.floor(ms/1000);
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  const sec = s%60;
+  if (h>0) return `${h}h ${m}m`;
+  if (m>0) return `${m}m ${sec}s`;
+  return `${sec}s`;
+}
+function pickField(obj, ...names){
+  for (const n of names){
+    if (obj[n] !== undefined && obj[n] !== "") return obj[n];
+  }
+  return "";
+}
+function destroyChart(id){ if (state.chartInstances[id]) { state.chartInstances[id].destroy(); delete state.chartInstances[id]; } }
+
+/* ============================================================
+   Chargement CSV
+   ============================================================ */
+function loadCSV(path){
+  return new Promise((resolve, reject) => {
+    Papa.parse(path, {
+      download: true, header: true, skipEmptyLines: true,
+      complete: (results) => {
+        const cleaned = results.data.map(row => {
+          const obj = {};
+          Object.keys(row).forEach(k => {
+            const key = k.replace(/^\uFEFF/, "").trim();
+            obj[key] = typeof row[k] === "string" ? row[k].trim() : row[k];
+          });
+          return obj;
+        });
+        console.log(`✅ ${path} : ${cleaned.length} lignes`);
+        resolve(cleaned);
+      },
+      error: (err) => reject(new Error(`Impossible de charger ${path} : ${err.message}`))
+    });
+  });
+}
+
+async function loadData(){
+  const [communes, intercos, maires, mandats] = await Promise.all([
+    loadCSV(LOCAL_FILES.communes),
+    loadCSV(LOCAL_FILES.intercos),
+    loadCSV(LOCAL_FILES.maires),
+    loadCSV(LOCAL_FILES.mandats)
+  ]);
+  state.communes = communes;
+  state.intercos = intercos;
+  state.maires = maires;
+  return { communes, intercos, maires, mandats };
+}
+
+/* ============================================================
+   Enrichissement
+   ============================================================ */
+function prepareData(raw){
+  const { communes, intercos, maires, mandats } = raw;
+
+  const mairesMap = {};
+  maires.forEach(m => {
+    const nom = pickField(m, "nom");
+    const prenom = pickField(m, "prenom", "prénom");
+    const keys = [`${prenom} ${nom}`, `${nom} ${prenom}`, nom, prenom]
+      .filter(Boolean).map(s => s.trim());
+    keys.forEach(k => mairesMap[k] = m);
+  });
+
+  const communesMap = {};
+  communes.forEach(c => {
+    const code = pickField(c, "code_insee", "codeInsee", "code");
+    communesMap[code] = c;
+  });
+
+  const intercosMap = {};
+  intercos.forEach(i => {
+    const court = pickField(i, "nom_court", "nomCourt", "court");
+    const nom = pickField(i, "nom");
+    intercosMap[court] = nom;
+  });
+
+  state.all = mandats.map(m => {
+    const nomMaire = pickField(m, "nom_maire", "nomMaire", "maire");
+    const codeInsee = pickField(m, "code_insee", "codeInsee", "code");
+    const nomCommune = pickField(m, "nom_commune", "nomCommune", "commune");
+    const dateDebut = pickField(m, "date_debut", "dateDebut", "debut");
+    const dateFin = pickField(m, "date_fin", "dateFin", "fin");
+
+    const infoMaire = mairesMap[nomMaire] || {};
+    const infoCommune = communesMap[codeInsee] || {};
+    const intercoCourt = pickField(infoCommune, "interco", "intercommunalite");
+    const genre = pickField(infoMaire, "genre", "sexe") || "?";
+
+    const anneeDebut = parseInt((dateDebut || "").substring(0,4)) || null;
+    const anneeFin = dateFin ? parseInt(dateFin.substring(0,4)) : new Date().getFullYear();
+    const enCours = !dateFin;
+
+    return {
+      nom_maire: nomMaire,
+      code_insee: codeInsee,
+      nom_commune: nomCommune || pickField(infoCommune, "nom"),
+      date_debut: dateDebut,
+      date_fin: dateFin,
+      anneeDebut, anneeFin, enCours,
+      genre,
+      interco: intercoCourt,
+      intercoNom: intercosMap[intercoCourt] || intercoCourt || "—",
+      duree: (anneeDebut && anneeFin) ? (anneeFin - anneeDebut) : null
+    };
+  });
+
+  console.log("📊 Mandats enrichis :", state.all.length);
+  console.log("🔍 Exemple :", state.all[0]);
+}
+
+/* ============================================================
+   Filtrage
+   ============================================================ */
+function applyFilters(){
+  const search = normalize(state.search);
+  const tab = state.currentTab;
+
+  let base = state.all;
+
+  if (state.categories.size > 0){
+    base = base.filter(d => state.categories.has(d.intercoNom));
+  }
+  if (state.commune){
+    base = base.filter(d => d.nom_commune === state.commune);
+  }
+
+  if (tab === 'encours') base = base.filter(d => d.enCours);
+  else if (tab === 'femmes') base = base.filter(d => d.genre === 'F');
+  else if (tab === 'hommes') base = base.filter(d => d.genre === 'H');
+
+  if (search){
+    base = base.filter(d => {
+      const hay = normalize([d.nom_maire, d.nom_commune, d.intercoNom].join(' '));
+      return hay.includes(search);
+    });
+  }
+
+  const sort = state.sort;
+  if (sort === 'maire') base.sort((a,b) => a.nom_maire.localeCompare(b.nom_maire, 'fr'));
+  else if (sort === 'commune') base.sort((a,b) => a.nom_commune.localeCompare(b.nom_commune, 'fr'));
+  else if (sort === 'recent') base.sort((a,b) => (b.anneeDebut||0) - (a.anneeDebut||0));
+  else if (sort === 'ancien') base.sort((a,b) => (a.anneeDebut||9999) - (b.anneeDebut||9999));
+
+  state.filtered = base;
+  state.totalFiltered = base.length;
+}
+
+/* ============================================================
+   Sidebar EPCI
+   ============================================================ */
+function renderCategories(){
+  const list = document.getElementById('sbList');
+  const search = normalize(document.getElementById('sourceSearch').value);
+
+  const counts = {};
+  state.all.forEach(d => { counts[d.intercoNom] = (counts[d.intercoNom]||0)+1; });
+
+  const items = Object.entries(counts)
+    .filter(([k]) => !search || normalize(k).includes(search))
+    .sort((a,b) => b[1]-a[1]);
+
+  list.innerHTML = items.map(([name, n]) => `
+    <div class="portal-item ${state.categories.has(name)?'active':''}"
+         data-key="${escapeHtml(name)}" title="${escapeHtml(name)}">
+      <div class="portal-check">✓</div>
+      <span class="portal-flag">🏛️</span>
+      <div class="portal-info">
+        <div class="portal-name">${escapeHtml(name)}</div>
+        <div class="portal-type">EPCI</div>
+      </div>
+      <span class="portal-count">${n}</span>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.portal-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.key;
+      if (state.categories.has(key)) state.categories.delete(key);
+      else state.categories.add(key);
+      renderCategories();
+      applyFiltersAndRender();
+    });
+  });
+
+  document.getElementById('sbCount').textContent =
+    `${items.length} EPCI · ${state.categories.size} actives`;
+}
+
+/* ============================================================
+   KPIs
+   ============================================================ */
+function renderKPIs(){
+  const data = state.filtered;
+  const total = data.length;
+  const maires = new Set(data.map(d => d.nom_maire)).size;
+  const communes = new Set(data.map(d => d.nom_commune)).size;
+  const femmes = data.filter(d => d.genre === 'F').length;
+  const pctFemmes = total ? ((femmes/total)*100).toFixed(1) : 0;
+  const durees = data.map(d => d.duree).filter(d => d && d > 0);
+  const moy = durees.length ? (durees.reduce((a,b)=>a+b,0)/durees.length).toFixed(1) : '—';
+  const annees = data.map(d => d.anneeDebut).filter(Boolean);
+  const minA = annees.length ? Math.min(...annees) : '—';
+  const maxA = annees.length ? Math.max(...annees) : '—';
+
+  document.getElementById('kpiMandats').textContent = total.toLocaleString('fr-FR');
+  document.getElementById('kpiMandatsSub').textContent = state.all.length + ' au total';
+  document.getElementById('kpiMaires').textContent = maires;
+  document.getElementById('kpiMairesSub').textContent = 'sur ' + state.all.length + ' mandats';
+  document.getElementById('kpiCommunes').textContent = communes + ' / 24';
+  document.getElementById('kpiCommunesSub').textContent = 'communes';
+  document.getElementById('kpiFemmes').textContent = femmes + ' (' + pctFemmes + '%)';
+  document.getElementById('kpiFemmesSub').textContent = femmes + ' mandats';
+  document.getElementById('kpiDuree').textContent = moy + ' ans';
+  document.getElementById('kpiDureeSub').textContent = durees.length + ' mandats terminés';
+  document.getElementById('kpiPeriode').textContent = minA + '–' + maxA;
+  document.getElementById('kpiPeriodeSub').textContent = 'période couverte';
+
+  document.getElementById('tbCount').textContent = total;
+  document.getElementById('tbMaires').textContent = maires;
+  document.getElementById('tbCommunes').textContent = communes;
+  document.getElementById('countAll').textContent = state.all.length;
+  document.getElementById('countEncours').textContent = state.all.filter(d=>d.enCours).length;
+  document.getElementById('countFemmes').textContent = state.all.filter(d=>d.genre==='F').length;
+  document.getElementById('countHommes').textContent = state.all.filter(d=>d.genre==='H').length;
+
+  document.getElementById('ivMandats').textContent = total;
+  document.getElementById('ivMairesUniques').textContent = maires;
+  document.getElementById('ivCommunesUniques').textContent = communes;
+  document.getElementById('ivFemmes').textContent = femmes;
+  document.getElementById('ivHommes').textContent = total - femmes;
+  document.getElementById('ivEncours').textContent = data.filter(d=>d.enCours).length;
+  document.getElementById('ivDureeMoy').textContent = moy + ' ans';
+
+  const parCommune = {};
+  data.forEach(d => parCommune[d.nom_commune] = (parCommune[d.nom_commune]||0)+1);
+  const topC = Object.entries(parCommune).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('topCommunes').innerHTML = topC.map(([n,v]) => `
+    <div class="intel-row"><span class="k">${escapeHtml(n)}</span><span class="v cyan">${v}</span></div>
+  `).join('') || '<div style="text-align:center;color:var(--grey-500);font-size:11px;padding:8px">Aucune donnée</div>';
+
+  const parMaire = {};
+  data.forEach(d => parMaire[d.nom_maire] = (parMaire[d.nom_maire]||0)+1);
+  const topM = Object.entries(parMaire).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('topMaires').innerHTML = topM.map(([n,v]) => `
+    <div class="intel-row"><span class="k">${escapeHtml(n)}</span><span class="v amber">${v}</span></div>
+  `).join('') || '<div style="text-align:center;color:var(--grey-500);font-size:11px;padding:8px">Aucune donnée</div>';
+}
+
+/* ============================================================
+   Vue Liste
+   ============================================================ */
+function renderResults(){
+  const area = document.getElementById('resultsArea');
+  const total = state.filtered.length;
+
+  if (total === 0){
+    area.innerHTML = `
+      <div class="empty">
+        <div style="font-size:48px;margin-bottom:16px">📭</div>
+        <div style="font-weight:700;color:var(--grey-900);margin-bottom:8px">Aucun mandat</div>
+        <div>Aucun résultat ne correspond à vos filtres.</div>
+      </div>
+    `;
+    document.getElementById('paginationBar').hidden = true;
+    return;
+  }
+
+  const start = (state.page-1) * state.pageSize;
+  const end = start + state.pageSize;
+  const slice = state.filtered.slice(start, end);
+
+  const html = slice.map(d => {
+    const genreBadge = d.genre === 'F'
+      ? '<span class="rc-badge femme">👩 Femme</span>'
+      : d.genre === 'H'
+        ? '<span class="rc-badge homme">👨 Homme</span>'
+        : '';
+    const enCoursBadge = d.enCours ? '<span class="rc-badge encours">🟢 En cours</span>' : '';
+    const periode = d.date_debut
+      ? (d.date_fin ? `${d.date_debut} → ${d.date_fin}` : `${d.date_debut} → aujourd'hui`)
+      : '—';
+
+    return `
+      <div class="result-card" data-maire="${escapeHtml(d.nom_maire)}">
+        <div class="rc-head">
+          <div class="rc-title">${escapeHtml(d.nom_maire)}</div>
+          <div class="rc-badges">
+            ${enCoursBadge}
+            ${genreBadge}
+          </div>
+        </div>
+        <div class="rc-org">🏛️ ${escapeHtml(d.nom_commune)} · ${escapeHtml(d.intercoNom)}</div>
+        <div class="rc-meta">
+          <span class="tag">📅 ${periode}</span>
+          ${d.duree ? `<span class="tag">⏱️ ${d.duree} an${d.duree>1?'s':''}</span>` : ''}
+          <span class="tag">📮 ${escapeHtml(d.code_insee)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const header = `
+    <div style="font-size:12px;color:var(--grey-700);
+                margin-bottom:12px;padding:10px 14px;background:var(--white);
+                border-radius:4px;border-left:4px solid var(--reunion-blue);
+                box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+      <strong style="color:var(--reunion-blue)">${total.toLocaleString('fr-FR')} mandat(s)</strong>
+      affiché(s) ${start+1}–${Math.min(end, total)}
+      · onglet : ${state.currentTab}
+    </div>
+  `;
+
+  area.innerHTML = header + html;
+
+  area.querySelectorAll('.result-card').forEach(card => {
+    card.addEventListener('click', () => showMaireModal(card.dataset.maire));
+  });
+
+  updatePaginationUI();
+}
+
+function updatePaginationUI(){
+  const bar = document.getElementById('paginationBar');
+  const info = document.getElementById('paginationInfo');
+  const input = document.getElementById('pageInput');
+  const totalEl = document.getElementById('pageTotal');
+  const first = document.getElementById('pageFirst');
+  const prev = document.getElementById('pagePrev');
+  const next = document.getElementById('pageNext');
+  const last = document.getElementById('pageLast');
+
+  const totalPages = Math.max(1, Math.ceil(state.totalFiltered / state.pageSize));
+  const cur = state.page;
+
+  info.innerHTML = `<strong>${state.totalFiltered.toLocaleString('fr-FR')}</strong> résultats · page <strong>${cur}</strong> / ${totalPages}`;
+  input.value = cur;
+  input.max = totalPages;
+  totalEl.textContent = `/ ${totalPages}`;
+  first.disabled = cur <= 1;
+  prev.disabled = cur <= 1;
+  next.disabled = cur >= totalPages;
+  last.disabled = cur >= totalPages;
+  bar.hidden = false;
+}
+
+/* ============================================================
+   Modal maire
+   ============================================================ */
+function showMaireModal(nomMaire){
+  const mandats = state.all.filter(d => d.nom_maire === nomMaire)
+    .sort((a,b) => (a.anneeDebut||0) - (b.anneeDebut||0));
+  if (!mandats.length) return;
+
+  document.getElementById('diffTitle').textContent = nomMaire;
+  const premier = mandats[0];
+  const dernier = mandats[mandats.length-1];
+  const totalAns = mandats.reduce((s,m) => s + (m.duree||0), 0);
+  const communes = [...new Set(mandats.map(m=>m.nom_commune))];
+
+  const html = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="intel-panel">
+        <div class="intel-head"><span>👤 IDENTITÉ</span></div>
+        <div class="intel-body">
+          <div class="intel-row"><span class="k">Genre</span><span class="v ${premier.genre==='F'?'red':'cyan'}">${premier.genre==='F'?'👩 Femme':'👨 Homme'}</span></div>
+          <div class="intel-row"><span class="k">Mandats</span><span class="v cyan">${mandats.length}</span></div>
+          <div class="intel-row"><span class="k">Communes</span><span class="v">${communes.length}</span></div>
+          <div class="intel-row"><span class="k">Durée totale</span><span class="v amber">${totalAns} ans</span></div>
+          <div class="intel-row"><span class="k">Premier mandat</span><span class="v">${premier.anneeDebut||'—'}</span></div>
+          <div class="intel-row"><span class="k">Dernier mandat</span><span class="v">${dernier.anneeFin||'—'}</span></div>
+        </div>
+      </div>
+      <div class="intel-panel">
+        <div class="intel-head"><span>🏛️ COMMUNE(S)</span></div>
+        <div class="intel-body">
+          ${communes.map(c => `
+            <div class="intel-row">
+              <span class="k">${escapeHtml(c)}</span>
+              <span class="v cyan">${mandats.filter(m=>m.nom_commune===c).length} mandat(s)</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="intel-panel">
+      <div class="intel-head"><span>📅 CHRONOLOGIE DES MANDATS</span></div>
+      <div class="intel-body">
+        ${mandats.map(m => `
+          <div class="timeline-item">
+            <div class="timeline-dot" style="background:${m.enCours?'var(--green-emeraude)':'var(--reunion-blue)'}"></div>
+            <div class="timeline-content">
+              <div class="timeline-date">${m.date_debut || '—'} → ${m.date_fin || "aujourd'hui"}</div>
+              <div class="timeline-title">${escapeHtml(m.nom_commune)}</div>
+              <div class="timeline-sub">${escapeHtml(m.intercoNom)}${m.duree ? ' · ' + m.duree + ' an' + (m.duree>1?'s':'') : ''}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('diffBody').innerHTML = html;
+  document.getElementById('diffModal').classList.add('show');
+}
+
+/* ============================================================
+   Carte — TUILES OSM GRATUITES SANS CLÉ API
+   ============================================================ */
+function renderMapView(){
+  const area = document.getElementById('resultsArea');
+  area.innerHTML = `
+    <div class="chart-card full">
+      <h3>🗺️ Carte des mandats par commune</h3>
+      <div id="map"></div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    if (state.map) { state.map.remove(); state.map = null; }
+
+    state.map = L.map('map', { zoomControl: true }).setView([-21.115, 55.536], 9);
+
+    // ==== Tuiles OpenStreetMap officielles — 100% GRATUITES, AUCUNE CLÉ API ====
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+      crossOrigin: true
+    }).addTo(state.map);
+
+    const parCommune = {};
+    state.filtered.forEach(d => parCommune[d.nom_commune] = (parCommune[d.nom_commune]||0)+1);
+    const max = Math.max(1, ...Object.values(parCommune));
+
+    function getColor(v){
+      const r = v/max;
+      if (r > 0.75) return "#d94d1e";
+      if (r > 0.5) return "#ffb800";
+      if (r > 0.25) return "#00a95f";
+      return "#0066cc";
+    }
+
+    Object.entries(COORDS_COMMUNES).forEach(([nom, coords]) => {
+      const nb = parCommune[nom] || 0;
+      if (nb === 0) return;
+      const radius = 8 + (nb/max)*22;
+      L.circleMarker(coords, {
+        radius, fillColor: getColor(nb), color:"#fff", weight:2, fillOpacity:0.85
+      }).addTo(state.map).bindPopup(
+        `<strong>${escapeHtml(nom)}</strong><br>📋 ${nb} mandat${nb>1?'s':''}`
+      );
+    });
+
+    // Force le recalcul de la taille après affichage
+    setTimeout(() => state.map.invalidateSize(), 100);
+  }, 100);
+}
+
+/* ============================================================
+   Vue Graphiques — HEATMAP CORRIGÉE
+   La heatmap utilise maintenant un rendu "matrix" custom
+   avec des rectangles dessinés via un plugin Chart.js léger
+   ============================================================ */
+function renderChartsView(){
+  const area = document.getElementById('resultsArea');
+  area.innerHTML = `
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>📊 Mandats par décennie</h3>
+        <div class="chart-container"><canvas id="chartDecennie"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>⚖️ Répartition H/F</h3>
+        <div class="chart-container"><canvas id="chartGenre"></canvas></div>
+      </div>
+      <div class="chart-card full">
+        <h3>📈 Évolution des mandats dans le temps</h3>
+        <div class="chart-container"><canvas id="chartTimeline"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>🏛️ Mandats par intercommunalité</h3>
+        <div class="chart-container"><canvas id="chartIntercos"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>⏱️ Distribution des durées</h3>
+        <div class="chart-container"><canvas id="chartDurees"></canvas></div>
+      </div>
+      <div class="chart-card full">
+        <h3>🏆 Top 10 des communes</h3>
+        <div class="chart-container"><canvas id="chartCommunes"></canvas></div>
+      </div>
+      <div class="chart-card full">
+        <h3>🔥 Heatmap — Communes × Décennies</h3>
+        <div id="heatmapCustom" style="overflow:auto;max-height:520px"></div>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    const data = state.filtered;
+
+    /* -------- 1. Décennie -------- */
+    destroyChart('decennie');
+    const dec = {};
+    data.forEach(d => { if (d.anneeDebut) { const k = Math.floor(d.anneeDebut/10)*10; dec[k]=(dec[k]||0)+1; } });
+    const decLabels = Object.keys(dec).sort((a,b)=>a-b);
+    state.chartInstances.decennie = new Chart(document.getElementById('chartDecennie'), {
+      type:'bar',
+      data:{labels:decLabels.map(x=>x+'s'),datasets:[{
+        label:'Mandats',data:decLabels.map(l=>dec[l]),
+        backgroundColor:'rgba(0,102,204,0.7)',borderColor:CHART_COLORS.blue,
+        borderWidth:2,borderRadius:4
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{y:{ticks:{color:'#3a3a3a'},grid:{color:'#e5e5e5'}},
+                x:{ticks:{color:'#3a3a3a'},grid:{display:false}}}}
+    });
+
+    /* -------- 2. Genre -------- */
+    destroyChart('genre');
+    const h = data.filter(d=>d.genre!=='F').length;
+    const f = data.filter(d=>d.genre==='F').length;
+    state.chartInstances.genre = new Chart(document.getElementById('chartGenre'), {
+      type:'doughnut',
+      data:{labels:['Hommes','Femmes'],datasets:[{
+        data:[h,f],backgroundColor:[CHART_COLORS.blue,CHART_COLORS.pink],
+        borderColor:'#fff',borderWidth:3
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#3a3a3a'}}}}
+    });
+
+    /* -------- 3. Timeline -------- */
+    destroyChart('timeline');
+    const p = {};
+    data.forEach(d => { if (d.anneeDebut) p[d.anneeDebut]=(p[d.anneeDebut]||0)+1; });
+    const tlabels = Object.keys(p).sort((a,b)=>a-b);
+    state.chartInstances.timeline = new Chart(document.getElementById('chartTimeline'), {
+      type:'line',
+      data:{labels:tlabels,datasets:[{
+        label:'Mandats débutés',data:tlabels.map(l=>p[l]),
+        borderColor:CHART_COLORS.cyan,backgroundColor:'rgba(86,212,221,0.2)',
+        fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:CHART_COLORS.cyan
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#3a3a3a'}}},
+        scales:{y:{ticks:{color:'#3a3a3a'},grid:{color:'#e5e5e5'}},
+                x:{ticks:{color:'#3a3a3a',maxTicksLimit:20},grid:{display:false}}}}
+    });
+
+    /* -------- 4. Intercos -------- */
+    destroyChart('intercos');
+    const ic = {};
+    data.forEach(d => { const k = d.intercoNom || 'N/A'; ic[k]=(ic[k]||0)+1; });
+    const icsorted = Object.entries(ic).sort((a,b)=>b[1]-a[1]);
+    state.chartInstances.intercos = new Chart(document.getElementById('chartIntercos'), {
+      type:'bar',
+      data:{labels:icsorted.map(i=>i[0].length>22?i[0].substring(0,22)+'…':i[0]),
+        datasets:[{label:'Mandats',data:icsorted.map(i=>i[1]),
+          backgroundColor:['rgba(0,102,204,0.8)','rgba(0,169,95,0.8)','rgba(217,77,30,0.8)','rgba(123,92,255,0.8)','rgba(225,0,15,0.8)'],
+          borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#3a3a3a'},grid:{color:'#e5e5e5'}},
+                y:{ticks:{color:'#3a3a3a',font:{size:10}},grid:{display:false}}}}
+    });
+
+    /* -------- 5. Durées -------- */
+    destroyChart('durees');
+    const bins = {'0-3':0,'4-6':0,'7-9':0,'10-12':0,'13-15':0,'16+':0};
+    data.forEach(d => {
+      const v = d.duree;
+      if (!v || v<=0) return;
+      if (v<=3) bins['0-3']++;
+      else if (v<=6) bins['4-6']++;
+      else if (v<=9) bins['7-9']++;
+      else if (v<=12) bins['10-12']++;
+      else if (v<=15) bins['13-15']++;
+      else bins['16+']++;
+    });
+    state.chartInstances.durees = new Chart(document.getElementById('chartDurees'), {
+      type:'bar',
+      data:{labels:Object.keys(bins),datasets:[{
+        label:'Mandats',data:Object.values(bins),
+        backgroundColor:'rgba(123,92,255,0.7)',borderColor:CHART_COLORS.purple,
+        borderWidth:2,borderRadius:4
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{y:{ticks:{color:'#3a3a3a'},grid:{color:'#e5e5e5'}},
+                x:{ticks:{color:'#3a3a3a'},grid:{display:false}}}}
+    });
+
+    /* -------- 6. Top communes -------- */
+    destroyChart('communes');
+    const pc = {};
+    data.forEach(d => pc[d.nom_commune]=(pc[d.nom_commune]||0)+1);
+    const top = Object.entries(pc).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    state.chartInstances.communes = new Chart(document.getElementById('chartCommunes'), {
+      type:'bar',
+      data:{labels:top.map(t=>t[0]),datasets:[{
+        label:'Mandats',data:top.map(t=>t[1]),
+        backgroundColor:'rgba(0,169,95,0.7)',borderColor:CHART_COLORS.green,
+        borderWidth:2,borderRadius:4
+      }]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#3a3a3a'},grid:{color:'#e5e5e5'}},
+                y:{ticks:{color:'#3a3a3a'},grid:{display:false}}}}
+    });
+
+    /* -------- 7. HEATMAP CUSTOM (HTML/CSS pur) -------- */
+    renderCustomHeatmap(data);
+  }, 60);
+}
+
+/* ============================================================
+   Heatmap custom en HTML/CSS — Fiable, pas de bug Chart.js
+   ============================================================ */
+function renderCustomHeatmap(data){
+  const container = document.getElementById('heatmapCustom');
+  if (!container) return;
+
+  const communes = [...new Set(data.map(d => d.nom_commune))].sort();
+  const decennies = [...new Set(data.filter(d=>d.anneeDebut).map(d => Math.floor(d.anneeDebut/10)*10))]
+    .sort((a,b)=>a-b);
+
+  if (!communes.length || !decennies.length){
+    container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--grey-500)">Aucune donnée</div>`;
+    return;
+  }
+
+  // Matrice de comptage
+  const matrix = {};
+  let maxVal = 0;
+  communes.forEach(c => {
+    matrix[c] = {};
+    decennies.forEach(d => matrix[c][d] = 0);
+  });
+  data.forEach(d => {
+    if (!d.anneeDebut) return;
+    const dec = Math.floor(d.anneeDebut/10)*10;
+    if (matrix[d.nom_commune] && matrix[d.nom_commune][dec] !== undefined){
+      matrix[d.nom_commune][dec]++;
+      if (matrix[d.nom_commune][dec] > maxVal) maxVal = matrix[d.nom_commune][dec];
+    }
+  });
+
+  // Couleur : dégradé bleu → orange → rouge
+  function cellColor(v){
+    if (v === 0) return '#f6f6f6';
+    const r = v / maxVal;
+    // Interpolation bleu (#cce4ff) → bleu vif (#0066cc) → orange (#d94d1e)
+    if (r < 0.5){
+      const t = r * 2;
+      const c1 = [204, 228, 255];
+      const c2 = [0, 102, 204];
+      const c = c1.map((x, i) => Math.round(x + (c2[i]-x) * t));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    } else {
+      const t = (r - 0.5) * 2;
+      const c1 = [0, 102, 204];
+      const c2 = [217, 77, 30];
+      const c = c1.map((x, i) => Math.round(x + (c2[i]-x) * t));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
+  }
+  function textColor(v){
+    if (v === 0) return '#929292';
+    return (v / maxVal) > 0.4 ? '#ffffff' : '#1e1e1e';
+  }
+
+  // Construction de la grille
+  let html = `
+    <div style="display:inline-block;min-width:100%">
+      <table style="border-collapse:separate;border-spacing:2px;font-family:var(--font-mono);font-size:10px">
+        <thead>
+          <tr>
+            <th style="position:sticky;left:0;background:var(--white);z-index:2;
+                       padding:6px 10px;text-align:left;font-weight:700;
+                       color:var(--reunion-blue);border-bottom:2px solid var(--grey-200);
+                       min-width:150px;font-size:11px;text-transform:uppercase;
+                       letter-spacing:0.5px">
+              Commune
+            </th>
+            ${decennies.map(d => `
+              <th style="background:var(--grey-50);padding:6px 8px;
+                         text-align:center;color:var(--grey-700);font-weight:700;
+                         border-bottom:2px solid var(--grey-200);min-width:52px;
+                         font-size:11px">
+                ${d}s
+              </th>
+            `).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${communes.map(c => `
+            <tr>
+              <td style="position:sticky;left:0;background:var(--white);z-index:1;
+                         padding:6px 10px;font-weight:600;color:var(--grey-900);
+                         font-size:11px;font-family:var(--font-sans);
+                         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+                         max-width:200px;border-right:2px solid var(--grey-200)">
+                ${escapeHtml(c)}
+              </td>
+              ${decennies.map(d => {
+                const v = matrix[c][d];
+                return `
+                  <td title="${escapeHtml(c)} · ${d}s : ${v} mandat(s)"
+                      style="background:${cellColor(v)};
+                             color:${textColor(v)};
+                             text-align:center;
+                             padding:6px 4px;
+                             border-radius:3px;
+                             font-weight:${v>0?'700':'400'};
+                             min-width:44px;
+                             transition:transform 0.1s;
+                             cursor:${v>0?'help':'default'}">
+                    ${v > 0 ? v : ''}
+                  </td>
+                `;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Légende
+  html += `
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+                margin-top:16px;padding:12px;background:var(--grey-50);
+                border-radius:4px;font-size:11px;font-family:var(--font-mono)">
+      <span style="font-weight:700;color:var(--reunion-blue);text-transform:uppercase;
+                   letter-spacing:0.5px">Légende :</span>
+      <span style="display:flex;align-items:center;gap:6px">
+        <span style="display:inline-block;width:16px;height:16px;background:#f6f6f6;border:1px solid #e5e5e5;border-radius:3px"></span>
+        0
+      </span>
+      ${[0.2, 0.4, 0.6, 0.8, 1].map(r => {
+        const v = Math.round(r * maxVal);
+        return `
+          <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:16px;height:16px;background:${cellColor(v)};border-radius:3px"></span>
+            ${v}
+          </span>
+        `;
+      }).join('')}
+      <span style="color:var(--grey-500)">max : ${maxVal}</span>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/* ============================================================
+   Vue Maires
+   ============================================================ */
+function renderMairesView(){
+  const area = document.getElementById('resultsArea');
+  const parMaire = {};
+  state.filtered.forEach(d => {
+    if (!parMaire[d.nom_maire]) parMaire[d.nom_maire] = { count:0, communes:new Set(), genre:d.genre, totalAns:0, premier:9999, dernier:0 };
+    parMaire[d.nom_maire].count++;
+    parMaire[d.nom_maire].communes.add(d.nom_commune);
+    parMaire[d.nom_maire].totalAns += d.duree || 0;
+    parMaire[d.nom_maire].premier = Math.min(parMaire[d.nom_maire].premier, d.anneeDebut || 9999);
+    parMaire[d.nom_maire].dernier = Math.max(parMaire[d.nom_maire].dernier, d.anneeFin || 0);
+  });
+  const top = Object.entries(parMaire).sort((a,b)=>b[1].count-a[1].count);
+
+  const html = top.map(([nom, info], i) => {
+    const communes = [...info.communes].join(', ');
+    const genreBadge = info.genre === 'F' ? '👩' : info.genre === 'H' ? '👨' : '';
+    return `
+      <div class="result-card" data-maire="${escapeHtml(nom)}">
+        <div class="rc-head">
+          <div class="rc-title">#${i+1} — ${genreBadge} ${escapeHtml(nom)}</div>
+          <div class="rc-badges">
+            <span class="rc-badge portal">${info.count} mandat${info.count>1?'s':''}</span>
+          </div>
+        </div>
+        <div class="rc-org">🏛️ ${escapeHtml(communes)}</div>
+        <div class="rc-meta">
+          <span class="tag">📅 ${info.premier} → ${info.dernier}</span>
+          <span class="tag">⏱️ ${info.totalAns} ans cumulés</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  area.innerHTML = `
+    <div style="font-size:12px;color:var(--grey-700);margin-bottom:12px;padding:10px 14px;
+                background:var(--white);border-radius:4px;border-left:4px solid var(--reunion-blue)">
+      <strong>${top.length} maire(s)</strong> — classés par nombre de mandats
+    </div>
+    ${html}
+  `;
+  document.getElementById('paginationBar').hidden = true;
+
+  area.querySelectorAll('.result-card').forEach(card => {
+    card.addEventListener('click', () => showMaireModal(card.dataset.maire));
+  });
+}
+
+/* ============================================================
+   Vue JSON brut
+   ============================================================ */
+function renderJsonView(){
+  const preview = state.filtered.slice(0, 20);
+  document.getElementById('resultsArea').innerHTML = `
+    <div style="font-size:12px;color:var(--grey-700);margin-bottom:12px;padding:10px 14px;
+                background:var(--white);border-radius:4px;border-left:4px solid var(--reunion-blue)">
+      <strong>${state.filtered.length} mandat(s)</strong> filtré(s) — aperçu 20 premiers
+    </div>
+    <pre style="font-family:var(--font-mono);font-size:11px;color:var(--grey-700);
+                background:var(--white);padding:16px;border-radius:4px;overflow-x:auto;
+                border:1px solid var(--grey-200);max-height:70vh;line-height:1.5">
+${escapeHtml(JSON.stringify(preview, null, 2))}
+    </pre>
+  `;
+  document.getElementById('paginationBar').hidden = true;
+}
+
+/* ============================================================
+   Dispatch
+   ============================================================ */
+function renderCurrentView(){
+  if (state.currentTab === 'charts' || state.currentView === 'charts') renderChartsView();
+  else if (state.currentView === 'carte') renderMapView();
+  else if (state.currentView === 'maires') renderMairesView();
+  else if (state.currentView === 'json') renderJsonView();
+  else renderResults();
+}
+
+function applyFiltersAndRender(){
+  applyFilters();
+  state.page = 1;
+  renderKPIs();
+  renderCurrentView();
+}
+
+/* ============================================================
+   Export
+   ============================================================ */
+function exportJson(){
+  const blob = new Blob([JSON.stringify(state.filtered, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mandats_maires_reunion_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function exportCsv(){
+  const cols = ['nom_maire','nom_commune','code_insee','intercoNom','genre','date_debut','date_fin','duree','enCours'];
+  const rows = [cols.join(',')];
+  state.filtered.forEach(d => {
+    rows.push(cols.map(c => {
+      const v = d[c] ?? '';
+      return `"${String(v).replace(/"/g,'""')}"`;
+    }).join(','));
+  });
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mandats_maires_reunion_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   Événements
+   ============================================================ */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    state.currentTab = t.dataset.tab;
+    if (state.currentTab === 'charts'){
+      state.currentView = 'charts';
+      document.querySelectorAll('.mode-tab').forEach(m => m.classList.toggle('active', m.dataset.view === 'charts'));
+    } else {
+      state.currentView = 'results';
+      document.querySelectorAll('.mode-tab').forEach(m => m.classList.toggle('active', m.dataset.view === 'results'));
+    }
+    applyFiltersAndRender();
+  });
+});
+
+document.querySelectorAll('.mode-tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    state.currentView = t.dataset.view;
+    if (state.currentTab === 'charts') state.currentTab = 'all';
+    renderCurrentView();
+  });
+});
+
+document.getElementById('btnSelectAll').addEventListener('click', () => {
+  state.categories = new Set(state.all.map(d => d.intercoNom));
+  renderCategories(); applyFiltersAndRender();
+});
+document.getElementById('btnSelectNone').addEventListener('click', () => {
+  state.categories = new Set();
+  renderCategories(); applyFiltersAndRender();
+});
+document.getElementById('btnSelectKey').addEventListener('click', () => {
+  const keys = state.all.map(d=>d.intercoNom);
+  const freq = {}; keys.forEach(k => freq[k]=(freq[k]||0)+1);
+  state.categories = new Set(Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0]));
+  renderCategories(); applyFiltersAndRender();
+});
+
+document.getElementById('sourceSearch').addEventListener('input', renderCategories);
+document.getElementById('queryInput').addEventListener('input', e => {
+  state.search = e.target.value;
+  applyFiltersAndRender();
+});
+document.getElementById('filterCommune').addEventListener('change', e => {
+  state.commune = e.target.value;
+  applyFiltersAndRender();
+});
+document.getElementById('sortSelect').addEventListener('change', e => {
+  state.sort = e.target.value;
+  applyFiltersAndRender();
+});
+document.getElementById('searchBtn').addEventListener('click', () => {
+  state.search = document.getElementById('queryInput').value;
+  applyFiltersAndRender();
+});
+
+document.getElementById('pageFirst').addEventListener('click', () => { state.page = 1; renderResults(); });
+document.getElementById('pagePrev').addEventListener('click', () => { state.page = Math.max(1, state.page-1); renderResults(); });
+document.getElementById('pageNext').addEventListener('click', () => { state.page++; renderResults(); });
+document.getElementById('pageLast').addEventListener('click', () => {
+  state.page = Math.max(1, Math.ceil(state.totalFiltered/state.pageSize));
+  renderResults();
+});
+document.getElementById('pageInput').addEventListener('change', e => {
+  const p = parseInt(e.target.value) || 1;
+  state.page = Math.max(1, Math.min(Math.ceil(state.totalFiltered/state.pageSize), p));
+  renderResults();
+});
+document.getElementById('pageSizeSelect').addEventListener('change', e => {
+  state.pageSize = parseInt(e.target.value);
+  state.page = 1;
+  renderResults();
+});
+
+document.getElementById('exportJson').addEventListener('click', exportJson);
+document.getElementById('exportCsv').addEventListener('click', exportCsv);
+document.getElementById('refreshBtn').addEventListener('click', () => location.reload());
+
+document.querySelectorAll('[data-diff-close]').forEach(el => {
+  el.addEventListener('click', () => document.getElementById('diffModal').classList.remove('show'));
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('diffModal').classList.remove('show');
+});
+
+setInterval(() => {
+  document.getElementById('ivUptime').textContent = formatUptime(Date.now() - state.uptimeStart);
+}, 1000);
+
+/* ============================================================
+   Init
+   ============================================================ */
+async function init(){
+  try {
+    const raw = await loadData();
+    prepareData(raw);
+
+    const communes = [...new Set(state.all.map(d => d.nom_commune))].sort();
+    const sel = document.getElementById('filterCommune');
+    communes.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      sel.appendChild(opt);
+    });
+
+    document.getElementById('tbStatus').textContent = 'READY';
+    document.getElementById('ivStatus').textContent = '● OPÉRATIONNEL';
+    document.getElementById('ivLastRefresh').textContent = new Date().toLocaleTimeString('fr-FR');
+
+    renderCategories();
+    applyFiltersAndRender();
+
+    document.getElementById('exportJson').disabled = false;
+    document.getElementById('exportCsv').disabled = false;
+
+    console.log("✅ Dashboard prêt");
+  } catch (err){
+    console.error(err);
+    document.getElementById('resultsArea').innerHTML = `
+      <div class="error-box">
+        <strong>❌ Erreur :</strong> ${escapeHtml(err.message)}<br><br>
+        <span style="color:var(--grey-700)">
+          Vérifiez que les 4 fichiers CSV sont dans <code>data/</code> et que vous ouvrez la page
+          via un serveur local (<code>python -m http.server 8000</code>).
+        </span>
+      </div>
+    `;
+    document.getElementById('tbStatus').textContent = 'ERROR';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
